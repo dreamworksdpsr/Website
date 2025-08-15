@@ -20,8 +20,8 @@ function enableScroll() {
 window.closePopup = function(id) {
     const popup = document.querySelector(`.popup[data-id="${id}"]`);
     if (popup) {
-        popup.classList.add("scale-0");
         popup.classList.remove("scale-100");
+        popup.classList.add("scale-0");
         setTimeout(() => {
             popup.classList.add("hidden");
         }, 300);
@@ -59,7 +59,7 @@ function renderEvents(events) {
         card.innerHTML = `
             <div class="flex flex-col mb-4">
                 <span class="text-3xl font-bold">${event.title}</span>
-                <span class="text-xl tracking-widest text-gray-800 dark:text-gray-200">${event.subtitle || ""}</span>
+                <span class="text-xl tracking-widest text-gray-800 dark:text-gray-200">${event.subtitle}</span>
             </div>
             <div class="text-sm md:text-base mb-6 text-gray-700 dark:text-gray-300 line-clamp-5">
                 ${event.description}
@@ -76,48 +76,44 @@ function renderEvents(events) {
 
 function renderPopup(event) {
     const popup = document.createElement("div");
-    popup.className = `popup fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] md:w-[50vw] h-[90vh] md:h-[70vh] bg-white dark:bg-gray-800 backdrop-blur-3xl bg-opacity-75 rounded-xl shadow-xl z-50 scale-0 transition-transform duration-300 ease-in-out flex flex-col overflow-hidden`;
+    popup.className = `popup fixed top-1/2 left-1/2 tranform -translate-x-1/2 -translate-y-1/2 w-[90vw] md:w-[50vw] h-[90vh] md:h-[70vh] bg-white dark:bg-gray-800 backdrop-blur-3xl bg-opacity-75 rounded-xl shadow-xl z-50 scale-0 transition-transform duration-300 ease-in-out flex flex-col overflow-hidden`;
     popup.setAttribute("data-id", `${event.id}`);
 
-    const details = event.details || {};
+    const details = event.details;
+    const dateLine = details.date ? `Date: ${details.date} <br>` : details.tentative_date ? `Tentative Date: ${details.tentative_date} <br>` : details.tentative_date_of_submission ? `Tentative Date of Submission: ${details.tentative_date_of_submission} <br>` : "";
+    const venueLine = details.venue ? `Venue: ${details.venue} <br>` : "";
 
-    // Build details section dynamically based on available fields
-    let detailsHTML = "";
-    if (details.class) detailsHTML += `Class: ${details.class} <br>`;
-    if (details.venue) detailsHTML += `Venue: ${details.venue} <br>`;
-    if (details.date) detailsHTML += `Date: ${details.date} <br>`;
-    if (details.tentative_date) detailsHTML += `Tentative Date: ${details.tentative_date} <br>`;
-    if (details.tentative_date_of_submission) detailsHTML += `Tentative Date of Submission: ${details.tentative_date_of_submission} <br>`;
-    if (details.deadline) detailsHTML += `Deadline: ${details.deadline} <br>`;
-    if (details.team_size) detailsHTML += `Team Size: ${details.team_size} <br>`;
-    if (details.teams_per_school) detailsHTML += `Teams per School: ${details.teams_per_school} <br>`;
-    if (details.eligibility) detailsHTML += `Eligibility: ${details.eligibility} <br>`;
-    if (details.submission_link) detailsHTML += `Submission Link: <a href="${details.submission_link}" target="_blank" class="text-blue-500 underline">Click Here</a><br>`;
-
-    // Add Judgement Criteria if available
+    let judgementCriteria = "";
     if (event.judgement_criteria) {
-        detailsHTML += `<br><strong>Judgement Criteria:</strong><br>`;
         if (Array.isArray(event.judgement_criteria)) {
-            detailsHTML += event.judgement_criteria.join("<br>");
-        } else if (typeof event.judgement_criteria === "object") {
-            for (let key in event.judgement_criteria) {
-                detailsHTML += `${key} – ${event.judgement_criteria[key]} marks<br>`;
+            judgementCriteria = `<p class='font-semibold mb-1 text-xl'>Judgement Criteria:</p><ul class='list-disc ml-6 text-md mb-4 text-gray-700 dark:text-gray-300'>`;
+            event.judgement_criteria.forEach(criteria => {
+                judgementCriteria += `<li>${criteria}</li>`;
+            });
+            judgementCriteria += `</ul>`;
+        } else if (typeof event.judgement_criteria === 'object') {
+            judgementCriteria = `<p class='font-semibold mb-1 text-xl'>Judgement Criteria:</p><ul class='list-disc ml-6 text-lg mb-4 text-gray-700 dark:text-gray-300'>`;
+            for (const [key, value] of Object.entries(event.judgement_criteria)) {
+                judgementCriteria += `<li >${key}: ${value} points</li>`;
             }
+            judgementCriteria += `</ul>`;
         }
     }
 
-    // Add Rounds if available
+    let rounds = "";
     if (event.rounds) {
-        detailsHTML += `<br><strong>Rounds:</strong><br>`;
-        event.rounds.forEach(r => {
-            detailsHTML += `<u>${r.name}</u> (${r.marks} marks)<br>`;
-            for (let key in r.criteria) {
-                detailsHTML += `- ${key}: ${r.criteria[key]}<br>`;
+        rounds = `<p class='font-semibold'>Rounds:</p><ul class='list-disc ml-6'>`;
+        event.rounds.forEach(round => {
+            rounds += `<li>${round.name} (${round.marks} marks)</li>`;
+            if (round.criteria) {
+                rounds += `<ul class='list-disc ml-6'>`;
+                for (const [key, value] of Object.entries(round.criteria)) {
+                    rounds += `<li>${key}: ${value} points</li>`;
+                }
+                rounds += `</ul>`;
             }
         });
-        if (event.total_marks) {
-            detailsHTML += `<br><strong>Total Marks:</strong> ${event.total_marks}<br>`;
-        }
+        rounds += `</ul>`;
     }
 
     popup.innerHTML = `
@@ -128,16 +124,28 @@ function renderPopup(event) {
         </div>
         <div class="px-12 text-gray-900 dark:text-gray-100">
             <p class="text-3xl font-bold mb-1">${event.title}</p>
-            <p class="text-xl font-medium mb-4 tracking-widest">${event.subtitle || ""}</p>
+            <p class="text-xl font-medium mb-4 tracking-widest">${event.subtitle}</p>
         </div>
         <div class="px-10 py-4 flex-1 overflow-y-auto custom-scrollbar">
             <p class="text-lg mb-4 font-semibold text-gray-800 dark:text-gray-200 max-w-prose">
-                ${detailsHTML || "No additional details available."}
+                ${venueLine}
+                ${dateLine}
             </p>
             <p class="text-lg mb-4 text-gray-700 dark:text-gray-300 max-w-prose" style="white-space: pre-line;">
                 ${event.description}
             </p>
+
+            
+            <div class="text-gray-900 dark:text-gray-100">
+                <p class="text-3xl font-bold mb-1">${judgementCriteria}</p>
+            </div>
+            <div class=" text-gray-900 dark:text-gray-100">
+                <p class="text-3xl font-bold mb-1">${rounds}</p>
+            </div>
+
         </div>
+
+
     `;
 
     popup.setAttribute("tabindex", "-1");
